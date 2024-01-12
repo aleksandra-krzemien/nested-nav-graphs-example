@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.annotation.VisibleForTesting
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -17,11 +18,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -37,13 +36,13 @@ import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.column.columnChart
 import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.entryModelOf
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 class SecondFragment : Fragment() {
 
-    private val dataSource = MutableLiveData<Data>()
+    @VisibleForTesting
+    val dataSource = MutableLiveData<Data>()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -51,36 +50,31 @@ class SecondFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-
-                while (true) {
-                    dataSource.value = Data(
-                        pages = listOf(
-                            Page(
-                                dataPoints = listOf(
-                                    DataPoint(x = 1, y = random.nextInt().mod(10)),
-                                    DataPoint(x = 2, y = random.nextInt().mod(10)),
-                                    DataPoint(x = 3, y = random.nextInt().mod(10)),
-                                ),
-                            ),
-                            Page(
-                                dataPoints = listOf(
-                                    DataPoint(x = 1, y = random.nextInt().mod(10)),
-                                    DataPoint(x = 2, y = random.nextInt().mod(10)),
-                                    DataPoint(x = 3, y = random.nextInt().mod(10)),
-                                ),
-                            ),
-                            Page(
-                                dataPoints = listOf(
-                                    DataPoint(x = 1, y = random.nextInt().mod(10)),
-                                    DataPoint(x = 2, y = random.nextInt().mod(10)),
-                                    DataPoint(x = 3, y = random.nextInt().mod(10)),
-                                ),
+                dataSource.value = Data(
+                    pages = listOf(
+                        Page(
+                            dataPoints = listOf(
+                                DataPoint(x = 1, y = random.nextInt().mod(10)),
+                                DataPoint(x = 2, y = random.nextInt().mod(10)),
+                                DataPoint(x = 3, y = random.nextInt().mod(10)),
                             ),
                         ),
-                    )
-
-                    delay(2000)
-                }
+                        Page(
+                            dataPoints = listOf(
+                                DataPoint(x = 1, y = random.nextInt().mod(10)),
+                                DataPoint(x = 2, y = random.nextInt().mod(10)),
+                                DataPoint(x = 3, y = random.nextInt().mod(10)),
+                            ),
+                        ),
+                        Page(
+                            dataPoints = listOf(
+                                DataPoint(x = 1, y = random.nextInt().mod(10)),
+                                DataPoint(x = 2, y = random.nextInt().mod(10)),
+                                DataPoint(x = 3, y = random.nextInt().mod(10)),
+                            ),
+                        ),
+                    ),
+                )
             }
         }
     }
@@ -145,19 +139,17 @@ private fun Page(
     Column(modifier = modifier) {
         Text(
             modifier = Modifier.wrapContentHeight(),
-            text = "Page $index"
+            text = "Page $index with point ${page.dataPoints.first()}"
         )
 
         val dataPoints = page.dataPoints.map { it.x to it.y }.toTypedArray()
         val chartEntryModel = entryModelOf(*dataPoints)
 
-        val coroutineScope = rememberCoroutineScope()
-        LaunchedEffect(chartEntryModel) {
-            coroutineScope.launch {
-                delay(500)
-                entryProducer.setEntriesSuspending(chartEntryModel.entries).await()
-            }
-        }
+        /*LaunchedEffect(chartEntryModel) {
+            entryProducer.setEntriesSuspending(chartEntryModel.entries).await()
+        }*/
+
+        entryProducer.setEntries(chartEntryModel.entries)
 
         Chart(
             modifier = Modifier
@@ -168,6 +160,7 @@ private fun Page(
                 .background(Color.White),
             chart = columnChart(),
             chartModelProducer = entryProducer,
+            runInitialAnimation = false,
         )
     }
 }
@@ -204,16 +197,16 @@ private fun PagePreview() {
     )
 }
 
-private data class Data(
+data class Data(
     val pages: List<Page>,
     val currentScreen: Int = 0,
 )
 
-private data class Page(
+data class Page(
     val dataPoints: List<DataPoint>,
 )
 
-private data class DataPoint(
+data class DataPoint(
     val x: Int,
     val y: Int,
 )
